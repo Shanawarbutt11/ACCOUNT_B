@@ -47,15 +47,8 @@ const Navbar = () => {
     };
 
     // ULTRA-PRECISE FINGERPRINT (V3)
-    // We combine ID, Timestamp, Machine, and specific Weights to ensure 100% uniqueness in lists
-    const getRecordFingerprint = (record) => {
-        const rid = record.reading_id || 'null';
-        const mid = record.machine_id || 'null';
-        const time = record.timestamp || 'null';
-        // Add weights to the hash to distinguish multiple alerts for the same machine at the same timestamp
-        const adhesive = record.adhesive_weight ?? record.adhesive ?? 0;
-        const resin = record.resin_weight ?? record.resin ?? 0;
-        return `FINGERPRINT_V3_${mid}_${time}_${rid}_${adhesive}_${resin}`;
+    const getRecordFingerprint = (alert) => {
+        return `ALERT_DB_${alert.alert_id}_${alert.machine_id}`;
     };
 
     const fetchAlerts = async () => {
@@ -71,70 +64,90 @@ const Navbar = () => {
                 } catch (e) { }
             }
 
-            const response = await ReadingsService.getHistory({ limit: 500 });
-            const allRecords = response.data || response.results || (Array.isArray(response) ? response : []);
+            // Fetch specific user's assigned machine ID if applicable
+            const getAssignedId = (u) => {
+                const req = u?.requested_machines;
+                if (Array.isArray(req) && req.length > 0) {
+                    const first = req[0];
+                    return String(first.id || first.machine_id || first);
+                }
+                return req ? String(req) : (u?.machine_id ? String(u.machine_id) : null);
+            };
+            const assignedId = getAssignedId(currentUser);
+
+            // Fetch from Alerts DB
+            const response = await ReadingsService.getAlertsDetails();
+            const allAlerts = Array.isArray(response) ? response : (response.data || []);
 
             const seenIdsInStorage = getSeenIdsFromStorage();
-            const allDetectedAnomalies = [];
 
-            allRecords.forEach(record => {
-                const rowAdhesive = Number(record.adhesive_weight ?? record.adhesive ?? 0);
-                const rowResin = Number(record.resin_weight ?? record.resin ?? 0);
+            // Filter and Map
+            const validAlerts = allAlerts.filter(alert => {
+                // Filter by assigned machine if not admin
+                if (currentUser?.rights !== 1 && assignedId) {
+                    if (String(alert.machine_id) !== String(assignedId)) return false;
+                }
+                // Only show unresolved alerts in navbar
+                return !alert.acknowledged_by;
+            }).map(alert => {
+                // Determine status/color from alert data
+                // API might return 'alert_type' like 'mixing_ratio_high'
+                // We need to map this to "Critical" or "Warning" or use getStatus if we have ratio
 
-                let ratio = record.calculated_ratio;
-                if (ratio === undefined || ratio === null) {
-                    ratio = rowResin > 0 ? (rowAdhesive / rowResin) : 0;
+                let ratio = alert.ratio || alert.calculated_ratio || 0;
+                if (!ratio && alert.message) {
+                    // Try to match ratio from message "Mixing ratio Critical: 1.234"
+                    const match = alert.message.match(/:\s*([\d.]+)/);
+                    if (match) ratio = parseFloat(match[1]);
                 }
 
-                const status = getStatus(ratio);
+                // If we have a ratio, use getStatus, otherwise derive from type
+                let status = getStatus(ratio);
 
-                if (status.label !== "Normal") {
-                    const fingerprint = getRecordFingerprint(record);
-                    allDetectedAnomalies.push({
-                        ...record,
-                        status: status,
-                        ratioVal: Number(ratio).toFixed(3),
-                        fingerprint
-                    });
+                // Fallback if ratio is 0 or missing but it is an alert
+                if (status.label === "Normal") {
+                    if (String(alert.alert_type).includes("high") || String(alert.alert_type).includes("low")) {
+                        // Assume it's at least a warning if it exists in DB
+                        status = { label: "Warning", color: "bg-amber-500 text-white" };
+                    }
                 }
+
+                return {
+                    ...alert,
+                    status: status,
+                    ratioVal: Number(ratio).toFixed(3),
+                    fingerprint: getRecordFingerprint(alert),
+                    timestamp: alert.triggered_at || alert.timestamp
+                };
             });
 
-            latestAnomaliesRef.current = allDetectedAnomalies;
+            // Sort by newest
+            validAlerts.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-            const unreadRecords = allDetectedAnomalies.filter(a => !seenIdsInStorage.has(a.fingerprint));
+            latestAnomaliesRef.current = validAlerts;
+
+            const unreadRecords = validAlerts.filter(a => !seenIdsInStorage.has(a.fingerprint));
             setUnreadCount(unreadRecords.length);
 
-            // Show latest 15 distinct anomaly events
-            setActiveAlerts(allDetectedAnomalies.slice(0, 15));
+            // Show latest 15
+            setActiveAlerts(validAlerts.slice(0, 15));
 
             if (!isFirstLoad.current) {
                 let toastsAdded = 0;
-                for (const alert of allDetectedAnomalies) {
+                for (const alert of validAlerts) {
                     if (!notifiedIds.current.has(alert.fingerprint)) {
                         notifiedIds.current.add(alert.fingerprint);
 
                         if (!seenIdsInStorage.has(alert.fingerprint)) {
-                            if (toastsAdded < 10) {
-                                addToast(`ALERT: ${alert.Machine?.name || alert.machine_name || 'Machine'} ratio ${alert.status.label}`, alert.status.label === "Critical" ? "critical" : "warning");
+                            if (toastsAdded < 5) {
+                                addToast(`ALERT: ${alert.Machine?.name || `Node ${alert.machine_id}`} - ${alert.status.label}`, alert.status.label === "Critical" ? "critical" : "warning");
                                 toastsAdded++;
-
-                                // Trigger API to save alert in DB
-                                if (alert.reading_id) {
-                                    const alertType = Number(alert.ratioVal) > 1.0 ? "mixing_ratio_high" : "mixing_ratio_low";
-                                    ReadingsService.createAlert({
-                                        machine_id: alert.machine_id,
-                                        reading_id: alert.reading_id,
-                                        alert_type: alertType,
-                                        message: `Mixing ratio ${alert.status.label}: ${alert.ratioVal}`,
-                                        triggered_at: new Date().toISOString()
-                                    }).catch(err => console.error("Failed to save auto-alert:", err));
-                                }
                             }
                         }
                     }
                 }
             } else {
-                allDetectedAnomalies.forEach(a => notifiedIds.current.add(a.fingerprint));
+                validAlerts.forEach(a => notifiedIds.current.add(a.fingerprint));
             }
 
             isFirstLoad.current = false;
@@ -232,10 +245,9 @@ const Navbar = () => {
                                             >
                                                 <div className="flex justify-between items-start">
                                                     <span className="text-sm font-bold text-slate-800">{alert.Machine?.name || alert.machine_name || `Node ${alert.machine_id}`}</span>
-                                                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase ${alert.status.color}`}>{alert.status.label}</span>
                                                 </div>
                                                 <p className="text-[11px] text-slate-500 mt-1 font-medium">
-                                                    Ratio: <span className="text-slate-900 font-black">{alert.ratioVal}</span>
+                                                    Ratio: <span className="text-slate-900 font-black">{alert.alert_ratio}</span>
                                                     <span className="ml-2 text-[10px] opacity-60">
                                                         {new Date(alert.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                     </span>

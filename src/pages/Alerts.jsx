@@ -146,15 +146,12 @@ const Alerts = () => {
     const displayedAlerts = alerts.filter(alert => {
         const isResolved = alert.acknowledged_by != null;
 
-        if (filterType === "ACKNOWLEDGED") {
+        if (filterType === "RESOLVED") {
             return isResolved;
         }
 
-        // For ALL, CRITICAL, WARNING, we only show UNRESOLVED alerts
-        if (isResolved) return false;
-
-        if (filterType === "ALL") return true;
-        return getStatus(alert.calculated_ratio).label.toUpperCase() === filterType;
+        // Default: Show Active (Unresolved)
+        return !isResolved;
     });
 
     return (
@@ -168,7 +165,7 @@ const Alerts = () => {
                 </div>
 
                 <div className="flex bg-slate-100 p-1 rounded-xl">
-                    {["ALL", "CRITICAL", "WARNING", "ACKNOWLEDGED"].map((type) => (
+                    {["ALL", "RESOLVED"].map((type) => (
                         <button
                             key={type}
                             onClick={() => setFilterType(type)}
@@ -177,7 +174,7 @@ const Alerts = () => {
                                 : "text-slate-500 hover:text-slate-700"
                                 }`}
                         >
-                            {type === "ACKNOWLEDGED" ? "RESOLVED" : type}
+                            {type === "ALL" ? "ACTIVE ALERTS" : "RESOLVED"}
                         </button>
                     ))}
                 </div>
@@ -223,9 +220,7 @@ const Alerts = () => {
                                             ID: {alert.machine_id} • EVENT: {alert.reading_id || 'LOCAL'}
                                         </span>
                                     </div>
-                                    <span className={`status-badge !text-[9px] font-black shadow-sm ${status.color}`}>
-                                        {status.label}
-                                    </span>
+
                                 </div>
 
                                 <div className="space-y-4">
@@ -233,10 +228,24 @@ const Alerts = () => {
                                         <div className="flex justify-between items-center">
                                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Detected Ratio</span>
                                             <span className={`text-2xl font-black tracking-tighter ${status.label === 'Critical' ? 'text-rose-600' : 'text-amber-600'}`}>
-                                                {Number(alert.calculated_ratio).toFixed(3)}
+                                                {Number(alert.alert_ratio).toFixed(3)}
                                             </span>
                                         </div>
                                     </div>
+                                    {/* Resolution History Display */}
+                                    {alert.acknowledged_by && (
+                                        <div className="mt-3 p-3 bg-emerald-50 rounded-xl border border-emerald-100/50">
+                                            <div className="flex justify-between items-start mb-1">
+                                                <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">Protocol Resolution</span>
+                                                <span className="text-[9px] font-bold text-emerald-400">
+                                                    {alert.AcknowledgedBy?.name || `user:${alert.acknowledged_by}`}
+                                                </span>
+                                            </div>
+                                            <p className="text-xs font-medium text-emerald-800 leading-snug">
+                                                {alert.comments || alert.message || "Resolved manually with standard protocol."}
+                                            </p>
+                                        </div>
+                                    )}
 
                                     <div className="flex justify-between items-center px-1">
                                         <div className="flex items-center gap-2">
@@ -245,14 +254,22 @@ const Alerts = () => {
                                                 {new Date(alert.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                                             </span>
                                         </div>
-                                        {canAcknowledge && (
+                                        <div className="flex gap-4">
                                             <button
-                                                onClick={() => { setSelectedAlert(alert); setShowAcknowledgeModal(true); }}
-                                                className="text-[10px] font-black text-slate-400 hover:text-slate-600 transition-colors uppercase tracking-[0.15em] underline decoration-slate-200 decoration-2 underline-offset-4"
+                                                onClick={() => navigate(`/machine/${alert.machine_id}`)}
+                                                className="text-[10px] font-black text-blue-500 hover:text-blue-700 transition-colors uppercase tracking-[0.15em] underline decoration-blue-200 decoration-2 underline-offset-4"
                                             >
-                                                Resolve
+                                                Analyze
                                             </button>
-                                        )}
+                                            {canAcknowledge && (
+                                                <button
+                                                    onClick={() => { setSelectedAlert(alert); setShowAcknowledgeModal(true); }}
+                                                    className="text-[10px] font-black text-slate-400 hover:text-slate-600 transition-colors uppercase tracking-[0.15em] underline decoration-slate-200 decoration-2 underline-offset-4"
+                                                >
+                                                    Resolve
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
