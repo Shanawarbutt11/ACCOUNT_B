@@ -1,5 +1,6 @@
 import { useState, useContext, useEffect } from "react";
 import Layout from "../components/Layout";
+import Skeleton from "../components/Skeleton";
 import { AuthContext } from "../context/AuthContext";
 import { RIGHTS } from "../services/mockData";
 import { UserService } from "../services/userService";
@@ -140,9 +141,22 @@ const Users = () => {
 
                         <tbody className="divide-y divide-slate-50">
                             {loading ? (
-                                <tr>
-                                    <td colSpan="4" className="px-6 py-12 text-center text-slate-400 font-bold">Synchronizing personnel data...</td>
-                                </tr>
+                                [...Array(8)].map((_, i) => (
+                                    <tr key={i}>
+                                        <td className="px-4 md:px-6 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <Skeleton className="w-8 h-8 md:w-10 md:h-10 rounded-xl" />
+                                                <div className="space-y-2">
+                                                    <Skeleton className="h-4 w-32" />
+                                                    <Skeleton className="h-3 w-20" />
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-4 md:px-6 py-4 hide-on-mobile"><Skeleton className="h-4 w-24" /></td>
+                                        <td className="px-4 md:px-6 py-4 hide-on-mobile"><Skeleton className="h-4 w-32" /></td>
+                                        <td className="px-4 md:px-6 py-4 text-right md:text-left"><Skeleton className="h-6 w-24 rounded-full" /></td>
+                                    </tr>
+                                ))
                             ) : currentUsers.length === 0 ? (
                                 <tr>
                                     <td colSpan="4" className="px-6 py-12 text-center text-slate-400 font-bold">No identities found matching the criteria.</td>

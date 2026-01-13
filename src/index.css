@@ -73,40 +73,45 @@
   }
 }
 
-  .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600;
-  }
-
-  .bg-mesh-white {
-    background-color: #ffffff;
-    background-image:
-      radial-gradient(at 0% 0%, hsla(210, 100%, 98%, 1) 0, transparent 50%),
-      radial-gradient(at 50% 0%, hsla(220, 100%, 97%, 1) 0, transparent 50%),
-      radial-gradient(at 100% 0%, hsla(230, 100%, 96%, 1) 0, transparent 50%);
-  }
-
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-
-  .custom-scrollbar::-webkit-scrollbar-track {
-    @apply bg-transparent;
-  }
-
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-slate-200 rounded-full;
-  }
-
-  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    @apply bg-slate-300;
-  }
-
-  .hide-on-mobile {
-    @apply hidden md:table-cell;
-  }
-
-  .stack-on-mobile {
-    @apply flex flex-col md:table-cell;
-  }
+.text-gradient {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600;
 }
+
+.bg-mesh-white {
+  background-color: #ffffff;
+  background-image:
+    radial-gradient(at 0% 0%, hsla(210, 100%, 98%, 1) 0, transparent 50%),
+    radial-gradient(at 50% 0%, hsla(220, 100%, 97%, 1) 0, transparent 50%),
+    radial-gradient(at 100% 0%, hsla(230, 100%, 96%, 1) 0, transparent 50%);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-slate-200 rounded-full;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  @apply bg-slate-300;
+}
+
+.hide-on-mobile {
+  @apply hidden md:table-cell;
+}
+
+.stack-on-mobile {
+  @apply flex flex-col md:table-cell;
+}
+
+.skeleton-box {
+  @apply bg-slate-200 animate-pulse rounded-lg;
+}
+
+/* } */

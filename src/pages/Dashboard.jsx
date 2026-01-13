@@ -6,6 +6,7 @@ import { MachineService } from "../services/machineService";
 import { UserService } from "../services/userService";
 import { calculateRatio, getStatus } from "../services/mockData";
 import { AuthContext } from "../context/AuthContext";
+import Skeleton from "../components/Skeleton";
 
 const Dashboard = () => {
     const navigate = useNavigate();
@@ -106,8 +107,41 @@ const Dashboard = () => {
     if (loading && machineData.length === 0) {
         return (
             <Layout>
-                <div className="flex justify-center items-center h-64">
-                    <p className="text-gray-500 italic">Getting data...</p>
+                <div className="mb-6 md:mb-8">
+                    <Skeleton className="h-8 w-48 mb-2" />
+                    <Skeleton className="h-4 w-32" />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {[1, 2, 3, 4, 5, 6].map((i) => (
+                        <div key={i} className="glass-card p-6 h-[250px] flex flex-col">
+                            <div className="flex justify-between items-start mb-6">
+                                <div className="space-y-2">
+                                    <Skeleton className="h-6 w-32" />
+                                    <Skeleton className="h-3 w-20" />
+                                </div>
+                                <Skeleton className="h-6 w-16 rounded-full" />
+                            </div>
+                            <div className="mt-auto space-y-4">
+                                <div className="flex justify-between">
+                                    <div className="space-y-2">
+                                        <Skeleton className="h-3 w-12" />
+                                        <Skeleton className="h-5 w-16" />
+                                    </div>
+                                    <div className="space-y-2 flex flex-col items-end">
+                                        <Skeleton className="h-3 w-12" />
+                                        <Skeleton className="h-5 w-16" />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <div className="flex justify-between">
+                                        <Skeleton className="h-3 w-16" />
+                                        <Skeleton className="h-6 w-12" />
+                                    </div>
+                                    <Skeleton className="h-1.5 w-full rounded-full" />
+                                </div>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </Layout>
         );
@@ -149,7 +183,7 @@ const Dashboard = () => {
                         <div
                             key={machineId}
                             onClick={() => navigate(`/machine/${machineId}`)}
-                            className="glass-card p-6 cursor-pointer group transition-all duration-500 hover:-translate-y-2 hover:shadow-premium-lg border-t-0 relative overflow-hidden"
+                            className="glass-card p-6 cursor-pointer group transition-all duration-500 hover:-translate-y-2 hover:shadow-premium-lg border-t-0 relative overflow-hidden flex flex-col h-full"
                         >
                             {/* Accent Glow */}
                             <div
@@ -173,7 +207,7 @@ const Dashboard = () => {
                                 </span>
                             </div>
 
-                            <div className="space-y-4 relative z-10">
+                            <div className="space-y-4 relative z-10 mt-auto">
                                 <div className="flex justify-between items-end">
                                     <div className="flex flex-col">
                                         <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Adhesive</span>

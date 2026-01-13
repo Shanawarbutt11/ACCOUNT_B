@@ -5,6 +5,7 @@ import MachineDetails from "./pages/MachineDetails";
 import Records from "./pages/Records";
 import Alerts from "./pages/Alerts";
 import Users from "./pages/Users";
+import Thresholds from "./pages/Thresholds";
 import Profile from "./pages/Profile";
 import ProtectedRoute from "./routes/ProtectedRoute";
 
@@ -51,6 +52,14 @@ function App() {
         element={
           <ProtectedRoute>
             <Users />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/thresholds"
+        element={
+          <ProtectedRoute>
+            <Thresholds />
           </ProtectedRoute>
         }
       />

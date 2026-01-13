@@ -1,5 +1,6 @@
 import { useState, useEffect, useContext } from "react";
 import Layout from "../components/Layout";
+import Skeleton from "../components/Skeleton";
 import { ReadingsService } from "../services/readingsService";
 import { getStatus, calculateRatio } from "../services/mockData";
 import { MachineService } from "../services/machineService";
@@ -52,20 +53,19 @@ const Records = () => {
 
             console.log("Records.jsx: Fetching records with filters:", filters);
 
-            // Fetch broader history to ensure client-side filter has data to work with
-            // We do NOT send status to backend because backend status filtering is unreliable
+            // Fetch a larger batch (500) to allow reliable client-side filtering and pagination
             const response = await ReadingsService.getHistory({
                 ...filters,
-                status: "", // Force empty status to fetch all types
+                status: "", // Backend filter is unreliable
                 machine_id: appliedMachineId,
-                page,
-                limit: 200
+                page: 1, // Fetch all for local pagination
+                limit: 500
             });
 
             console.log("Records.jsx: Raw history response:", response);
             let data = response.data || response.results || (Array.isArray(response) ? response : []);
 
-            // Client-Side Filter for Consistency
+            // 3. Client-Side Filter by machine (if redundant) and status
             if (filters.status) {
                 data = data.filter(record => {
                     const rowAdhesive = Number(record.adhesive_weight ?? record.adhesive ?? 0);
@@ -75,14 +75,13 @@ const Records = () => {
                         : calculateRatio(rowAdhesive, rowResin);
 
                     const status = getStatus(rowRatio);
-                    // Match exact capitalized status from dropdown
                     return status.label === filters.status;
                 });
             }
 
-            console.log("Records.jsx: Processed records for table:", data);
+            console.log("Records.jsx: Total records after filtering:", data.length);
             setRecords(data);
-            setTotalPages(response.totalPages || 1);
+            setTotalPages(Math.ceil(data.length / 10) || 1);
             setError("");
         } catch (err) {
             console.error("Fetch records error:", err);
@@ -131,7 +130,7 @@ const Records = () => {
 
     useEffect(() => {
         fetchRecords();
-    }, [page, filters]);
+    }, [filters]);
 
     useEffect(() => {
         fetchMachines();
@@ -241,79 +240,138 @@ const Records = () => {
                         </thead>
 
                         <tbody className="divide-y divide-slate-50">
-                            {records.map((record) => {
-                                // 1. Robust weight and ratio detection
-                                const rowAdhesive = Number(record.adhesive_weight ?? record.adhesive ?? 0);
-                                const rowResin = Number(record.resin_weight ?? record.resin ?? 0);
-                                const rowRatio = record.calculated_ratio !== undefined && record.calculated_ratio !== null
-                                    ? record.calculated_ratio
-                                    : calculateRatio(rowAdhesive, rowResin);
-
-                                const status = getStatus(rowRatio);
-
-                                // 2. Robust machine lookup
-                                const mRef = machines.find(m => String(m.id) === String(record.machine_id));
-                                const machineName = mRef?.name || record.Machine?.name || `ID: ${record.machine_id}`;
-
-                                // 3. Robust operator identity detection
-                                const operatorName = record.User?.name || record.Operator?.name || record.operator?.name || record.operator_name || "System Agent";
-                                const operatorInitial = operatorName[0] || 'S';
-
-                                return (
-                                    <tr key={record.id || Math.random()} className="hover:bg-blue-50/30 transition-colors group">
-                                        <td className="px-4 md:px-6 py-3 md:py-4">
-                                            <div className="flex flex-col">
-                                                <span className="text-xs md:text-sm font-bold text-slate-700">{new Date(record.timestamp).toLocaleDateString()}</span>
-                                                <span className="text-[10px] md:text-[11px] font-medium text-slate-400 italic">{new Date(record.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            {loading ? (
+                                [...Array(10)].map((_, i) => (
+                                    <tr key={i}>
+                                        <td className="px-4 md:px-6 py-4">
+                                            <div className="space-y-2">
+                                                <Skeleton className="h-4 w-20" />
+                                                <Skeleton className="h-3 w-16" />
                                             </div>
                                         </td>
-                                        <td className="px-4 md:px-6 py-3 md:py-4">
-                                            <div className="flex flex-col">
-                                                <span className="text-xs md:text-sm font-bold text-slate-800 group-hover:text-blue-600 transition-colors uppercase tracking-tight">{machineName}</span>
-                                                <span className="text-[10px] md:text-[11px] font-bold text-slate-300 uppercase">ID: {record.machine_id}</span>
+                                        <td className="px-4 md:px-6 py-4">
+                                            <div className="space-y-2">
+                                                <Skeleton className="h-4 w-32" />
+                                                <Skeleton className="h-3 w-16" />
                                             </div>
                                         </td>
-                                        <td className="px-4 md:px-6 py-3 md:py-4 hide-on-mobile">
-                                            <div className="flex items-center gap-2 md:gap-3">
-                                                <div className="w-7 h-7 md:w-8 md:h-8 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg flex items-center justify-center text-[10px] md:text-[11px] font-bold text-slate-500 border border-white shadow-sm">
-                                                    {operatorInitial}
-                                                </div>
-                                                <span className="text-[10px] md:text-xs font-bold text-slate-600 truncate max-w-[80px] md:max-w-none">{operatorName}</span>
+                                        <td className="px-4 md:px-6 py-4 hide-on-mobile">
+                                            <div className="flex items-center gap-3">
+                                                <Skeleton className="w-8 h-8 rounded-lg" />
+                                                <Skeleton className="h-4 w-24" />
                                             </div>
                                         </td>
-                                        <td className="px-4 md:px-6 py-3 md:py-4">
-                                            <div className="flex justify-center items-center gap-2 md:gap-4">
-                                                <div className="flex flex-col items-center">
-                                                    <span className="text-[8px] md:text-[10px] font-bold text-slate-300 uppercase tracking-tighter">Adh</span>
-                                                    <span className="text-xs md:text-sm font-bold text-slate-600 text-center">{rowAdhesive}</span>
-                                                </div>
-                                                <div className="w-px h-6 bg-slate-100"></div>
-                                                <div className="flex flex-col items-center">
-                                                    <span className="text-[8px] md:text-[10px] font-bold text-slate-300 uppercase tracking-tighter">Res</span>
-                                                    <span className="text-xs md:text-sm font-bold text-slate-600 text-center">{rowResin}</span>
-                                                </div>
+                                        <td className="px-4 md:px-6 py-4">
+                                            <div className="flex justify-center gap-4">
+                                                <Skeleton className="h-4 w-8" />
+                                                <Skeleton className="h-4 w-8" />
                                             </div>
                                         </td>
-                                        <td className="px-4 md:px-6 py-3 md:py-4 text-center">
-                                            <span className="text-xs md:text-sm font-bold text-blue-600 bg-blue-50/50 border border-blue-100/50 px-3 md:px-4 py-1 md:py-1.5 rounded-full shadow-sm">
-                                                {Number(rowRatio).toFixed(3)}
-                                            </span>
+                                        <td className="px-4 md:px-6 py-4 text-center">
+                                            <Skeleton className="h-8 w-16 rounded-full mx-auto" />
                                         </td>
-                                        <td className="px-4 md:px-6 py-3 md:py-4 text-right">
-                                            <span className={`status-badge !text-[10px] md:!text-xs ${status.color}`}>
-                                                {status.label}
-                                            </span>
+                                        <td className="px-4 md:px-6 py-4 text-right">
+                                            <Skeleton className="h-6 w-20 rounded-full ml-auto" />
                                         </td>
                                     </tr>
+                                ))
+                            ) : records.length === 0 ? (
+                                <tr>
+                                    <td colSpan="6" className="px-6 py-12 text-center text-slate-400 font-bold italic">No records found matching filters.</td>
+                                </tr>
+                            ) : (
+                                records.slice((page - 1) * 10, page * 10).map((record) => {
+                                    // 1. Robust weight and ratio detection
+                                    const rowAdhesive = Number(record.adhesive_weight ?? record.adhesive ?? 0);
+                                    const rowResin = Number(record.resin_weight ?? record.resin ?? 0);
+                                    const rowRatio = record.calculated_ratio !== undefined && record.calculated_ratio !== null
+                                        ? record.calculated_ratio
+                                        : calculateRatio(rowAdhesive, rowResin);
 
-                                );
-                            })}
+                                    const status = getStatus(rowRatio);
+
+                                    // 2. Robust machine lookup
+                                    const mRef = machines.find(m => String(m.id) === String(record.machine_id));
+                                    const machineName = mRef?.name || record.Machine?.name || `ID: ${record.machine_id}`;
+
+                                    // 3. Robust operator identity detection
+                                    const operatorName = record.User?.name || record.Operator?.name || record.operator?.name || record.operator_name || "System Agent";
+                                    const operatorInitial = operatorName[0] || 'S';
+
+                                    return (
+                                        <tr key={record.id || Math.random()} className="hover:bg-blue-50/30 transition-colors group">
+                                            <td className="px-4 md:px-6 py-3 md:py-4">
+                                                <div className="flex flex-col">
+                                                    <span className="text-xs md:text-sm font-bold text-slate-700">{new Date(record.timestamp).toLocaleDateString()}</span>
+                                                    <span className="text-[10px] md:text-[11px] font-medium text-slate-400 italic">{new Date(record.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 md:px-6 py-3 md:py-4">
+                                                <div className="flex flex-col">
+                                                    <span className="text-xs md:text-sm font-bold text-slate-800 group-hover:text-blue-600 transition-colors uppercase tracking-tight">{machineName}</span>
+                                                    <span className="text-[10px] md:text-[11px] font-bold text-slate-300 uppercase">ID: {record.machine_id}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 md:px-6 py-3 md:py-4 hide-on-mobile">
+                                                <div className="flex items-center gap-2 md:gap-3">
+                                                    <div className="w-7 h-7 md:w-8 md:h-8 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg flex items-center justify-center text-[10px] md:text-[11px] font-bold text-slate-500 border border-white shadow-sm">
+                                                        {operatorInitial}
+                                                    </div>
+                                                    <span className="text-[10px] md:text-xs font-bold text-slate-600 truncate max-w-[80px] md:max-w-none">{operatorName}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 md:px-6 py-3 md:py-4">
+                                                <div className="flex justify-center items-center gap-2 md:gap-4">
+                                                    <div className="flex flex-col items-center">
+                                                        <span className="text-[8px] md:text-[10px] font-bold text-slate-300 uppercase tracking-tighter">Adh</span>
+                                                        <span className="text-xs md:text-sm font-bold text-slate-600 text-center">{rowAdhesive}</span>
+                                                    </div>
+                                                    <div className="w-px h-6 bg-slate-100"></div>
+                                                    <div className="flex flex-col items-center">
+                                                        <span className="text-[8px] md:text-[10px] font-bold text-slate-300 uppercase tracking-tighter">Res</span>
+                                                        <span className="text-xs md:text-sm font-bold text-slate-600 text-center">{rowResin}</span>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 md:px-6 py-3 md:py-4 text-center">
+                                                <span className="text-xs md:text-sm font-bold text-blue-600 bg-blue-50/50 border border-blue-100/50 px-3 md:px-4 py-1 md:py-1.5 rounded-full shadow-sm">
+                                                    {Number(rowRatio).toFixed(3)}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 md:px-6 py-3 md:py-4 text-right">
+                                                <span className={`status-badge !text-[10px] md:!text-xs ${status.color}`}>
+                                                    {status.label}
+                                                </span>
+                                            </td>
+                                        </tr>
+
+                                    );
+                                })
+                            )}
                         </tbody>
                     </table>
                 </div>
 
-                <div className="p-4 bg-slate-50/50 border-t border-slate-100 flex justify-center">
-                    <span className="text-[11px] font-bold text-slate-300 uppercase tracking-[0.3em]">End of Log Stream</span>
+                <div className="p-4 bg-slate-50/50 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
+                    <div className="text-[10px] md:text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+                        Showing page {page} of {totalPages}
+                    </div>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setPage(p => Math.max(1, p - 1))}
+                            disabled={page === 1}
+                            className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-[10px] font-bold uppercase tracking-widest text-slate-600 hover:bg-slate-50 disabled:opacity-30 transition-all shadow-sm"
+                        >
+                            Previous
+                        </button>
+                        <button
+                            onClick={() => setPage(p => p + 1)}
+                            disabled={page >= totalPages}
+                            className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-[10px] font-bold uppercase tracking-widest text-slate-600 hover:bg-slate-50 disabled:opacity-30 transition-all shadow-sm"
+                        >
+                            Next
+                        </button>
+                    </div>
                 </div>
             </div>
         </Layout>

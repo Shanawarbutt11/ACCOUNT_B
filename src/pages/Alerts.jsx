@@ -6,6 +6,7 @@ import { ReadingsService } from "../services/readingsService";
 import { UserService } from "../services/userService";
 import { MachineService } from "../services/machineService";
 import { AuthContext } from "../context/AuthContext";
+import Skeleton from "../components/Skeleton";
 
 const Alerts = () => {
     const { user } = useContext(AuthContext);
@@ -78,33 +79,14 @@ const Alerts = () => {
                 // Map user name for acknowledgment
                 const resolver = usersArray.find(u => String(u.id) === String(alert.acknowledged_by));
                 const resolverName = resolver?.name || alert.AcknowledgedBy?.name || `user:${alert.acknowledged_by}`;
-                // Determine ratio from message if possible or use a default/placeholder
-                // The API example doesn't explicitly return ratio, but we can try to parse or default.
-                // If the UI relies on 'calculated_ratio', we need it.
-                // Assuming 'message' might contain it or we accept 0/null if not available.
-                // For now, we map explicitly known fields.
 
-                // MOCK/DERIVED values to keep UI from breaking:
-                const ratio = alert.ratio || 0; // If API adds this later
-                const ad = 0;
-                const re = 0;
-
+                const ratio = alert.ratio || 0;
                 const mid = alert.machine_id || 'null';
                 const time = alert.triggered_at || alert.timestamp || new Date().toISOString();
                 const rid = alert.reading_id || alert.alert_id || 'null';
 
                 // GENERATE FINGERPRINT
                 const fingerprint = `ALERT_API_${alert.alert_id}_${mid}_${time}`;
-
-                // Try to infer status from alert_type
-                // "mixing_ratio_high" -> Critical? Warning? 
-                // Let's assume non-normal.
-                // If detailed ratio isn't there, we might need to patch getStatus or mock it.
-                // Let's pass the alert_type as a status label substitute if needed, or pass a fake ratio 
-                // that triggers the right color if we know it's high/low.
-
-                // However, the UI uses getStatus(record.calculated_ratio).
-                // We'll attach the raw alert object properties.
 
                 return {
                     ...alert,
@@ -138,8 +120,6 @@ const Alerts = () => {
         e.preventDefault();
         if (!selectedAlert) return;
         try {
-            // Using the update-alert API
-            // Note: We mapped alert.alert_id -> alert.id in fetchAlerts
             const targetId = selectedAlert.id || selectedAlert.alert_id;
 
             if (!targetId) {
@@ -167,6 +147,38 @@ const Alerts = () => {
         // Default: Show Active (Unresolved)
         return !isResolved;
     });
+
+    if (loading && alerts.length === 0) {
+        return (
+            <Layout>
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-6 md:mb-8">
+                    <div className="space-y-2">
+                        <Skeleton className="h-8 w-48" />
+                        <Skeleton className="h-3 w-32" />
+                    </div>
+                    <Skeleton className="h-10 w-48 rounded-xl" />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[1, 2, 3, 4, 5, 6].map((i) => (
+                        <div key={i} className="glass-card p-6 h-[250px] flex flex-col">
+                            <div className="space-y-2 mb-6">
+                                <Skeleton className="h-6 w-3/4" />
+                                <Skeleton className="h-3 w-1/2" />
+                            </div>
+                            <Skeleton className="h-20 w-full rounded-2xl mb-6" />
+                            <div className="mt-auto flex justify-between items-center">
+                                <Skeleton className="h-3 w-20" />
+                                <div className="flex gap-4">
+                                    <Skeleton className="h-3 w-12" />
+                                    <Skeleton className="h-3 w-12" />
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </Layout>
+        );
+    }
 
     return (
         <Layout>

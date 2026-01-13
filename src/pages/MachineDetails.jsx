@@ -8,6 +8,7 @@ import { UserService } from "../services/userService";
 import { getStatus, calculateRatio } from "../services/mockData";
 import { AuthContext } from "../context/AuthContext";
 import ThresholdModal from "../components/ThresholdModal";
+import Skeleton from "../components/Skeleton";
 
 const MachineDetails = () => {
     const { id } = useParams();
@@ -96,8 +97,57 @@ const MachineDetails = () => {
     if (loading || verifying) {
         return (
             <Layout>
-                <div className="flex justify-center items-center h-64 text-slate-400 font-bold uppercase tracking-widest animate-pulse">
-                    {verifying ? "Verifying Credentials..." : "Synchronizing Telemetry..."}
+                <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+                    <div className="space-y-4">
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-10 w-64" />
+                        <Skeleton className="h-4 w-48" />
+                    </div>
+                    <Skeleton className="h-12 w-48 rounded-2xl" />
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 mb-8">
+                    <div className="lg:col-span-1 space-y-6">
+                        <div className="glass-card p-6 h-[180px] flex flex-col justify-between">
+                            <Skeleton className="h-4 w-24" />
+                            <Skeleton className="h-10 w-32" />
+                            <Skeleton className="h-4 w-40" />
+                        </div>
+                        <div className="glass-card p-6 h-[180px] flex flex-col justify-between">
+                            <Skeleton className="h-4 w-24" />
+                            <Skeleton className="h-10 w-32" />
+                            <Skeleton className="h-4 w-20" />
+                        </div>
+                    </div>
+
+                    <div className="lg:col-span-3">
+                        <div className="glass-card p-8 h-[400px]">
+                            <div className="flex justify-between mb-8">
+                                <Skeleton className="h-6 w-48" />
+                                <div className="flex gap-4">
+                                    <Skeleton className="h-4 w-24" />
+                                    <Skeleton className="h-4 w-24" />
+                                </div>
+                            </div>
+                            <Skeleton className="h-[250px] w-full rounded-2xl" />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="glass-card overflow-hidden">
+                    <div className="p-6 border-b border-slate-100 italic font-black text-[11px] text-slate-400 uppercase tracking-widest">
+                        Fetching Historical Telemetry...
+                    </div>
+                    <div className="p-6 space-y-4">
+                        {[1, 2, 3, 4, 5].map(i => (
+                            <div key={i} className="flex justify-between items-center py-2">
+                                <Skeleton className="h-4 w-32" />
+                                <Skeleton className="h-4 w-24" />
+                                <Skeleton className="h-4 w-20" />
+                                <Skeleton className="h-6 w-20 rounded-full" />
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </Layout>
         );
